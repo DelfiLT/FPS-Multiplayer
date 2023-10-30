@@ -3,25 +3,32 @@ using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 using Cinemachine;
+using TMPro;
 
 public class PlayerMovement : NetworkBehaviour
 {
+    [Header("Player Stats")]
+    [SerializeField] int playerHp = 100;
     [SerializeField] float moveSpeed = 3f;
     [SerializeField] float rotationSpeed;
+    [SerializeField] TextMeshProUGUI playerHpText;
+
+    private Animator playerAnim;
+
+    [Header("Shoot Settings")]
     [SerializeField] float shootTime;
     [SerializeField] int bulletForce = 10;
-    private bool canShoot;
-
     [SerializeField] private Transform spawnObjectPrefab;
     [SerializeField] private Transform bulletSpawn;
+    [SerializeField] private Animator gunAnim;
 
+    private bool canShoot;
     private Transform spawnedObjectTransform;
 
+    [Header("Camera")]
     [SerializeField] private CinemachineVirtualCamera virtualCamera;
     [SerializeField] private Transform cameraTransform;
 
-    private Animator playerAnim;
-    [SerializeField] private Animator gunAnim;
 
     private void Start()
     {
@@ -47,6 +54,8 @@ public class PlayerMovement : NetworkBehaviour
         //PlayerRotation
         Quaternion rotation = Quaternion.Euler(0, cameraTransform.eulerAngles.y, 0);
         transform.rotation = Quaternion.Lerp(transform.rotation, rotation, rotationSpeed * Time.deltaTime);
+
+        playerHpText.text = "HP " + playerHp.ToString("00");
     }
 
     void Update()
@@ -95,13 +104,20 @@ public class PlayerMovement : NetworkBehaviour
 
         Rigidbody bulletRb = spawnedObjectTransform.GetComponent<Rigidbody>();
         bulletRb.AddRelativeForce((Vector3.forward * bulletForce), ForceMode.Impulse);
-
-        Destroy(spawnedObjectTransform.gameObject, 4);
     }
 
     [ServerRpc]
     private void TestServerRpc()
     {
         Shoot();
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("Bullet"))
+        {
+            playerHp = playerHp - 10;
+            collision.gameObject.GetComponent<NetworkObject>().Despawn();
+        }
     }
 }
